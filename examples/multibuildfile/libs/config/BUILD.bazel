@@ -1,0 +1,14 @@
+load("@rules_odin//odin:defs.bzl", "odin_library")
+
+odin_library(
+    name = "config",
+    srcs = glob(
+        ["*.odin"],
+        allow_empty = False,
+    ),
+    visibility = [
+        "//apps/example:__pkg__",
+        "//tests:__pkg__",
+    ],
+    deps = ["@toml_parser"],
+)

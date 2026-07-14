@@ -1,2 +1,13 @@
 e2e/smoke
 e2e/failure_propagation
+e2e/provider_transitive
+e2e/collection
+e2e/dependency_http
+e2e/dependency_git
+e2e/monorepo
+e2e/multimodule
+e2e/two_dependencies
+examples/singlebuildfile
+examples/multibuildfile
+examples/multimodule/apps/example
+examples/multimodule/libs/config

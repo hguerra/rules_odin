@@ -2,7 +2,8 @@
 #
 # Structure:
 #   lint  → pre-commit (buildifier) + typos
-#   test  → 3 OS × 3 Bazel versions (build + e2e smoke)
+#   test  → 4 OS runners on Bazel 9.2.0 (rules + portable e2e)
+#   dependency-e2e → complete offline dependency contract on Linux/Bazel 9.2
 #   gate  → aggregates all results for branch protection
 #
 # Branch protection should require the "gate" job to pass.
@@ -58,10 +59,10 @@ jobs:
       - uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # v1.48.0
 
   # ---------------------------------------------------------------------------
-  # Test: build rules_odin + e2e smoke test across OS/Bazel matrix.
+  # Test: build rules_odin + portable e2e checks across the OS matrix.
   # ---------------------------------------------------------------------------
   test:
-    name: Test (${{ matrix.os }}, Bazel ${{ matrix.bazel }})
+    name: Test (${{ matrix.os }}, Bazel 9.2.0)
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -69,7 +70,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-latest, windows-latest]
-        bazel: ["7.7.1", "8.7.0", "9.1.1"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -77,12 +77,12 @@ jobs:
         with:
           bazelisk-cache: true
           disk-cache: >-
-            ${{ github.event_name == 'pull_request' && 'pr' || 'main' }}-${{ matrix.os }}-${{ matrix.bazel }}
+            ${{ github.event_name == 'pull_request' && 'pr' || 'main' }}-${{ matrix.os }}-9.2.0
           repository-cache: true
 
       - name: Pin Bazel version
         shell: bash
-        run: echo "${{ matrix.bazel }}" > .bazelversion
+        run: echo "9.2.0" > .bazelversion
 
       - name: Build rules_odin
         shell: bash
@@ -91,16 +91,66 @@ jobs:
       - name: Smoke test (e2e)
         shell: bash
         working-directory: e2e/smoke
-        run: |
-          echo "${{ matrix.bazel }}" > .bazelversion
-          bazel test //...
+        run: bazel test --lockfile_mode=error //...
 
       - name: Failure propagation test (e2e)
         shell: bash
         working-directory: e2e/failure_propagation
+        run: bazel test --lockfile_mode=error //...
+
+      - name: Transitive provider test (e2e)
+        shell: bash
+        working-directory: e2e/provider_transitive
+        run: bazel build --lockfile_mode=error //...
+
+      - name: Nested collection test (e2e)
+        shell: bash
+        working-directory: e2e/collection
+        run: bazel build --lockfile_mode=error //...
+
+      # This also exercises HTTP staging on Windows with the checked-in lock.
+      - name: Single-module dependency graph (e2e)
+        shell: bash
+        working-directory: e2e/monorepo
         run: |
-          echo "${{ matrix.bazel }}" > .bazelversion
-          bazel test //...
+          bazel test --lockfile_mode=error //...
+          bazel fetch --lockfile_mode=error //...
+          bazel test --lockfile_mode=error --nofetch //...
+
+  # Full repository-rule scripts use POSIX local-path fixtures. The portable
+  # HTTP staging path is still covered on Windows by the matrix above.
+  dependency-e2e:
+    name: Dependency contracts (Linux, Bazel 9.2.0)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+
+      - name: Pin Bazel version
+        shell: bash
+        run: echo "9.2.0" > .bazelversion
+
+      - name: Complete e2e suite
+        shell: bash
+        env:
+          GIT_TERMINAL_PROMPT: "0"
+        run: ./e2e/check.sh
+
+      - name: Scan tracked files for fixture credential leakage
+        shell: bash
+        run: |
+          if git grep -n -E 'RULES_ODIN_(HTTP|GIT)_SECRET_MARKER' -- \
+            ':!e2e/dependency_http/check_private_failures.sh' \
+            ':!e2e/dependency_git/check_private_failures.sh'; then
+            echo "::error::Fixture credential marker escaped its test script"
+            exit 1
+          fi
 
   # ---------------------------------------------------------------------------
   # Gate: single status check for branch protection.
@@ -108,15 +158,16 @@ jobs:
   # ---------------------------------------------------------------------------
   gate:
     name: gate
-    needs: [lint, test]
+    needs: [lint, test, dependency-e2e]
     runs-on: ubuntu-24.04
     if: always()
     steps:
       - name: Check results
         run: |
           if [[ "${{ needs.lint.result }}" != "success" || \
-                "${{ needs.test.result }}" != "success" ]]; then
-            echo "::error::CI failed: lint=${{ needs.lint.result }}, test=${{ needs.test.result }}"
+                "${{ needs.test.result }}" != "success" || \
+                "${{ needs.dependency-e2e.result }}" != "success" ]]; then
+            echo "::error::CI failed: lint=${{ needs.lint.result }}, test=${{ needs.test.result }}, dependency-e2e=${{ needs.dependency-e2e.result }}"
             exit 1
           fi
           echo "All checks passed."

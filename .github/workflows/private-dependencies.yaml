@@ -1,0 +1,86 @@
+# Opt-in, trusted-event integration for a private GitHub archive.
+# Configure the protected `private-dependencies` environment before enabling.
+name: Private dependencies
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: private-dependencies
+  cancel-in-progress: false
+
+jobs:
+  github-archive:
+    name: Private GitHub archive
+    runs-on: ubuntu-24.04
+    environment: private-dependencies
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
+        with:
+          bazelisk-cache: true
+
+      - name: Create read-only GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.RULES_ODIN_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RULES_ODIN_APP_PRIVATE_KEY }}
+          owner: ${{ vars.RULES_ODIN_PRIVATE_OWNER }}
+          repositories: ${{ vars.RULES_ODIN_PRIVATE_REPOSITORY }}
+          permission-contents: read
+
+      - name: Create ephemeral credentials and test workspace
+        shell: bash
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          ARCHIVE_URL: ${{ vars.RULES_ODIN_PRIVATE_ARCHIVE_URL }}
+          ARCHIVE_SHA256: ${{ vars.RULES_ODIN_PRIVATE_ARCHIVE_SHA256 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$ARCHIVE_URL"
+          test -n "$ARCHIVE_SHA256"
+          printf 'machine api.github.com\n  login x-access-token\n  password %s\n' "$APP_TOKEN" > "$RUNNER_TEMP/rules_odin.netrc"
+          mkdir -p "$RUNNER_TEMP/private-odin-dependency"
+          cat > "$RUNNER_TEMP/private-odin-dependency/MODULE.bazel" <<EOF
+          module(name = "rules_odin_private_dependency_test")
+          bazel_dep(name = "rules_odin", version = "0.2.0")
+          local_path_override(module_name = "rules_odin", path = "$GITHUB_WORKSPACE")
+          odin_deps = use_extension("@rules_odin//odin:deps_extensions.bzl", "odin_deps")
+          odin_deps.http_archive(
+              name = "private_fixture",
+              urls = ["$ARCHIVE_URL"],
+              sha256 = "$ARCHIVE_SHA256",
+              strip_components = 1,
+              package_path = "private_fixture",
+              auth = "github_bearer",
+          )
+          use_repo(odin_deps, "private_fixture")
+          EOF
+          touch "$RUNNER_TEMP/private-odin-dependency/BUILD.bazel"
+
+      # No remote cache or remote executor is configured: private source stays
+      # on this trusted ephemeral runner.
+      - name: Fetch and analyze private collection
+        shell: bash
+        env:
+          NETRC: ${{ runner.temp }}/rules_odin.netrc
+        working-directory: ${{ runner.temp }}/private-odin-dependency
+        run: |
+          bazel query @private_fixture//:private_fixture --output=location
+          bazel build @private_fixture//:private_fixture
+
+      - name: Remove credentials and private source
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/rules_odin.netrc"
+          rm -rf "$RUNNER_TEMP/private-odin-dependency"

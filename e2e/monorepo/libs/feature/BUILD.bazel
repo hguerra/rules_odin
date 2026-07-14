@@ -1,0 +1,18 @@
+load("@rules_odin//odin:defs.bzl", "odin_library", "odin_test")
+
+package(default_visibility = ["//visibility:public"])
+
+odin_library(
+    name = "feature",
+    srcs = ["feature.odin"],
+    deps = [
+        "//libs/core:shared_core",
+        "@parser",
+    ],
+)
+
+odin_test(
+    name = "feature_test",
+    srcs = ["feature_test.odin"],
+    deps = [":feature"],
+)

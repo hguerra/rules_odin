@@ -1,0 +1,15 @@
+load("@rules_odin//odin:defs.bzl", "odin_library", "odin_test")
+
+package(default_visibility = ["//visibility:public"])
+
+odin_library(
+    name = "common",
+    srcs = ["src/common/common.odin"],
+    deps = ["@parser"],
+)
+
+odin_test(
+    name = "common_test",
+    srcs = ["tests/common_test.odin"],
+    deps = [":common"],
+)

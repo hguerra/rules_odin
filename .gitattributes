@@ -1,0 +1,5 @@
+# Bzlmod lockfiles hash Starlark extension sources. Keep their bytes stable on Windows.
+*.bzl text eol=lf
+*.bazel text eol=lf
+MODULE.bazel text eol=lf
+REPO.bazel text eol=lf

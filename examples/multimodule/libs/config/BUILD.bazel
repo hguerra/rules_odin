@@ -1,0 +1,8 @@
+load("@rules_odin//odin:defs.bzl", "odin_library")
+
+odin_library(
+    name = "config",
+    srcs = ["config/config.odin"],
+    visibility = ["//visibility:public"],
+    deps = ["@toml_parser"],
+)

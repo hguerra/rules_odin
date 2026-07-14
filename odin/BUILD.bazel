@@ -16,6 +16,7 @@ bzl_library(
     srcs = ["defs.bzl"],
     deps = [
         "//odin/private:binary_bzl",
+        "//odin/private:collection_bzl",
         "//odin/private:library_bzl",
         "//odin/private:test_bzl",
     ],
@@ -30,6 +31,15 @@ bzl_library(
     name = "extensions",
     srcs = ["extensions.bzl"],
     deps = [":repositories"],
+)
+
+bzl_library(
+    name = "deps_extensions",
+    srcs = ["deps_extensions.bzl"],
+    deps = [
+        "//odin/private:deps_repositories_bzl",
+        "//odin/private:deps_validation_bzl",
+    ],
 )
 
 bzl_library(

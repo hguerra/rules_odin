@@ -4,11 +4,12 @@ Supported version matrix for `rules_odin`.
 
 ## Bazel Versions
 
-| Bazel Version | Status    | Notes                    |
-| ------------- | --------- | ------------------------ |
-| 9.x (9.1.1)   | Supported | Latest, recommended      |
-| 8.x (8.7.0)   | Supported | LTS, used for local dev  |
-| 7.x (7.7.1)   | Supported | Will be dropped when EOL |
+| Bazel Version | Status    | Notes               |
+| ------------- | --------- | ------------------- |
+| 9.2.0         | Supported | Required and tested |
+
+Earlier fork commits remain available to Bazel 7/8 users, but new releases do
+not maintain or test compatibility with those Bazel versions.
 
 ## Odin Compiler Versions
 
@@ -33,6 +34,19 @@ Supported version matrix for `rules_odin`.
 | --------------------- | ------------- | -------------------- |
 | bzlmod (MODULE.bazel) | Supported     | Primary, recommended |
 | WORKSPACE             | Not supported |                      |
+
+## Dependency extension
+
+`odin_deps` is Bzlmod-only. HTTP materialization uses Bazel's built-in
+downloader and does not require Git, curl, Python, or a system Odin compiler.
+Git materialization requires a system `git` executable and external HTTPS or
+SSH credential configuration. The generated repository layout is tested with
+Bazel 9.2.0 through the public operating-system matrix. Both `strip_prefix` and
+`strip_components` use the Bazel 9.2 repository API.
+
+Single-module monorepos are the recommended topology. Independent modules in a
+single Git repository are supported when each module root owns its lockfile,
+overrides, extension visibility, and toolchain registration.
 
 ## Host Requirements
 

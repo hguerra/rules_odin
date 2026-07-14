@@ -1,0 +1,7 @@
+load("@rules_odin//odin:defs.bzl", "odin_test")
+
+odin_test(
+    name = "identity_test",
+    srcs = ["main.odin"],
+    deps = ["//libs/feature"],
+)

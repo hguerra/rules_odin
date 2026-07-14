@@ -34,7 +34,7 @@ after `bazel_dep`:
 git_override(
     module_name = "rules_odin",
     remote = "https://github.com/hguerra/rules_odin.git",
-    commit = "1133b5efbe4472a8577567bc309c8c82f3ee2564",
+    commit = "<last commit hash>",
 )
 ```
 

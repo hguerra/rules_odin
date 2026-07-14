@@ -1,3 +1,32 @@
-"""Empty BUILD for odin/tests package."""
+"""Analysis tests for public Odin rules."""
+
+load("//odin:defs.bzl", "odin_collection")
+load(":collection_test.bzl", "collection_test_suite")
+load(":deps_validation_test.bzl", "deps_validation_test_suite")
 
 package(default_visibility = ["//odin:__subpackages__"])
+
+odin_collection(
+    name = "empty_collection",
+    srcs = [],
+    collection_root = "testdata",
+    tags = ["manual"],
+)
+
+odin_collection(
+    name = "outside_collection",
+    srcs = ["testdata/sample.odin"],
+    collection_root = "vendor",
+    tags = ["manual"],
+)
+
+odin_collection(
+    name = "control_character_collection",
+    srcs = ["testdata/sample.odin"],
+    collection_root = "testdata\ninvalid",
+    tags = ["manual"],
+)
+
+collection_test_suite(name = "collection_tests")
+
+deps_validation_test_suite(name = "deps_validation_tests")

@@ -1,0 +1,13 @@
+load("@rules_odin//odin:defs.bzl", "odin_test")
+
+odin_test(
+    name = "config_test",
+    srcs = glob(
+        ["*_test.odin"],
+        allow_empty = False,
+    ),
+    deps = [
+        "//libs/config",
+        "@simpleenv",
+    ],
+)

@@ -1,0 +1,55 @@
+"""Offline HTTP dependency integration test."""
+
+module(
+    name = "rules_odin_dependency_http_test",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_odin", version = "0.2.0")
+local_path_override(
+    module_name = "rules_odin",
+    path = "../..",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "platforms", version = "0.0.10")
+
+odin = use_extension("@rules_odin//odin:extensions.bzl", "odin")
+odin.toolchain(odin_version = "dev-2026-06")
+use_repo(odin, "odin_toolchains")
+
+odin_deps = use_extension("@rules_odin//odin:deps_extensions.bzl", "odin_deps")
+odin_deps.http_archive(
+    name = "parser",
+    package_path = "parser",
+    # Deterministic testdata/parser.tar.gz; see check.sh for verification.
+    sha256 = "6cc47e54724afcc3371bc347bec3a15f20378d346f0142180f2cb93f1819e7d2",
+    source_subdir = "src",
+    strip_prefix = "parser-source",
+    urls = ["https://offline.invalid/parser.tar.gz"],
+)
+odin_deps.github(
+    name = "provider_contract",
+    repository = "Up05/toml_parser",
+    tag = "v1.2.0",
+)
+odin_deps.gitlab(
+    name = "gitlab_contract",
+    commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    repository = "acme/parser",
+    sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+)
+odin_deps.git(
+    name = "git_contract",
+    commit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    url = "https://gitlab.com/acme/parser.git",
+)
+use_repo(
+    odin_deps,
+    "git_contract",
+    "gitlab_contract",
+    "parser",
+    "provider_contract",
+)
+
+register_toolchains("@odin_toolchains//:all")

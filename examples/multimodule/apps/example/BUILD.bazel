@@ -1,0 +1,19 @@
+load("@rules_odin//odin:defs.bzl", "odin_binary", "odin_test")
+
+odin_binary(
+    name = "example",
+    srcs = ["main.odin"],
+    deps = [
+        "@example_config//:config",
+        "@simpleenv",
+    ],
+)
+
+odin_test(
+    name = "example_test",
+    srcs = ["main_test.odin"],
+    deps = [
+        "@example_config//:config",
+        "@simpleenv",
+    ],
+)

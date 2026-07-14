@@ -1,0 +1,18 @@
+load("@rules_odin//odin:defs.bzl", "odin_binary", "odin_library")
+
+odin_library(
+    name = "shared_core",
+    srcs = ["libs/core/core.odin"],
+)
+
+odin_library(
+    name = "feature",
+    srcs = ["libs/feature/feature.odin"],
+    deps = [":shared_core"],
+)
+
+odin_binary(
+    name = "provider_transitive_test",
+    srcs = ["app/main.odin"],
+    deps = [":feature"],
+)

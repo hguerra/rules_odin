@@ -1,0 +1,10 @@
+load("@rules_odin//odin:defs.bzl", "odin_test")
+
+odin_test(
+    name = "two_dependencies_test",
+    srcs = ["app/main.odin"],
+    deps = [
+        "@formatter",
+        "@parser",
+    ],
+)

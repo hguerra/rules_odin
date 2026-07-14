@@ -1,0 +1,4 @@
+bazel-bin
+bazel-multibuildfile
+bazel-out
+bazel-testlogs

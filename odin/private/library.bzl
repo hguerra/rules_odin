@@ -8,7 +8,7 @@ The collection root is the parent directory of the package directory,
 so that `import "<name>:<pkg_dir_basename>"` resolves correctly.
 """
 
-load("//odin/private:common.bzl", "OdinLibraryInfo", "get_package_dir")
+load("//odin/private:common.bzl", "OdinLibraryInfo", "get_package_dir", "normalize_collections")
 
 def _odin_library_impl(ctx):
     srcs = ctx.files.srcs
@@ -34,11 +34,29 @@ def _odin_library_impl(ctx):
     else:
         collection_root = parts[0]
 
+    transitive_srcs = [dep[OdinLibraryInfo].transitive_srcs for dep in ctx.attr.deps]
+    collections = [(
+        ctx.label.name,
+        collection_root,
+        str(ctx.label),
+    )]
+    for dep in ctx.attr.deps:
+        collections.extend(dep[OdinLibraryInfo].transitive_collections)
+
     info = OdinLibraryInfo(
         srcs = depset(srcs),
         collection_name = ctx.label.name,
         collection_root = collection_root,
         pkg_dir = pkg_dir,
+        transitive_srcs = depset(
+            direct = srcs,
+            transitive = transitive_srcs,
+        ),
+        transitive_collections = normalize_collections(
+            collections,
+            "odin_library",
+            ctx.label.name,
+        ),
     )
 
     return [
@@ -57,6 +75,11 @@ odin_library = rule(
             doc = "Odin source files. All files must be in the same directory (one Odin package).",
             allow_files = [".odin"],
             mandatory = True,
+        ),
+        "deps": attr.label_list(
+            doc = "Direct Odin library dependencies propagated transitively.",
+            providers = [OdinLibraryInfo],
+            default = [],
         ),
     },
 )

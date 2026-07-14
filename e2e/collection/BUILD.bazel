@@ -1,0 +1,13 @@
+load("@rules_odin//odin:defs.bzl", "odin_binary", "odin_collection")
+
+odin_collection(
+    name = "parser",
+    srcs = glob(["vendor/parser/**/*.odin"]),
+    collection_root = "vendor/parser",
+)
+
+odin_binary(
+    name = "collection_test",
+    srcs = ["app/main.odin"],
+    deps = [":parser"],
+)

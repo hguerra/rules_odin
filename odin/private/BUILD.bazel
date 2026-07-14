@@ -20,6 +20,22 @@ bzl_library(
 )
 
 bzl_library(
+    name = "collection_bzl",
+    srcs = ["collection.bzl"],
+    deps = [":common_bzl"],
+)
+
+bzl_library(
+    name = "deps_validation_bzl",
+    srcs = ["deps_validation.bzl"],
+)
+
+bzl_library(
+    name = "deps_repositories_bzl",
+    srcs = ["deps_repositories.bzl"],
+)
+
+bzl_library(
     name = "binary_bzl",
     srcs = ["binary.bzl"],
     deps = [":common_bzl"],

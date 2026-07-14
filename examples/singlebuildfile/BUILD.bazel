@@ -1,0 +1,25 @@
+load("@rules_odin//odin:defs.bzl", "odin_binary", "odin_test")
+
+odin_binary(
+    name = "config_example",
+    srcs = glob(
+        ["app/*.odin"],
+        allow_empty = False,
+    ),
+    deps = [
+        "@simpleenv",
+        "@toml_parser",
+    ],
+)
+
+odin_test(
+    name = "config_test",
+    srcs = glob(
+        ["tests/*_test.odin"],
+        allow_empty = False,
+    ),
+    deps = [
+        "@simpleenv",
+        "@toml_parser",
+    ],
+)

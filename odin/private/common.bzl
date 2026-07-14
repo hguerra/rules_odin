@@ -7,8 +7,43 @@ OdinLibraryInfo = provider(
         "collection_name": "String: Name used in `-collection:<name>=<root>` (the label name).",
         "collection_root": "String: Parent directory of the package directory, passed as the collection root path.",
         "pkg_dir": "String: Package directory path (dirname of the source files).",
+        "transitive_srcs": "depset: Direct and transitive Odin source files.",
+        "transitive_collections": "List of (name, root, owner) tuples required by this library.",
     },
 )
+
+def normalize_collections(collections, rule_name, target_name):
+    """Sort, deduplicate, and validate collection tuples.
+
+    Args:
+        collections: List of (name, root, owner) tuples.
+        rule_name: Public rule name used in errors.
+        target_name: Target name used in errors.
+
+    Returns:
+        A deterministic list with identical diamond dependencies deduplicated.
+    """
+    result = []
+    seen = {}
+    for collection in sorted(collections):
+        name = collection[0]
+        if name in seen:
+            previous = seen[name]
+            if previous == collection:
+                continue
+            fail(
+                "rules_odin: {} '{}' has duplicate collection name '{}' ".format(
+                    rule_name,
+                    target_name,
+                    name,
+                ) + "from '{}' and '{}'.".format(
+                    previous[2],
+                    collection[2],
+                ),
+            )
+        seen[name] = collection
+        result.append(collection)
+    return result
 
 def get_package_dir(srcs, rule_name):
     """Determine the package directory from source files.
@@ -99,32 +134,26 @@ def compile_odin_binary(ctx, srcs, build_mode, out_file, extra_defines = {}):
     # Collect library deps: add their source files to inputs and
     # register each as a collection for Odin's import resolution.
     dep_srcs = []
-    seen_collections = {}
+    dep_collections = []
     for dep in ctx.attr.deps:
         lib_info = dep[OdinLibraryInfo]
-        name = lib_info.collection_name
-        if name in seen_collections:
-            fail(
-                "{} '{}' has duplicate collection name '{}' ".format(
-                    rule_name,
-                    ctx.label.name,
-                    name,
-                ) + "from deps '{}' and '{}'. ".format(
-                    seen_collections[name],
-                    dep.label,
-                ) + "Odin collection names must be unique within a target.",
-            )
-        seen_collections[name] = dep.label
-        dep_srcs.extend(lib_info.srcs.to_list())
+        dep_srcs.append(lib_info.transitive_srcs)
+        dep_collections.extend(lib_info.transitive_collections)
+
+    for collection in normalize_collections(
+        dep_collections,
+        rule_name,
+        ctx.label.name,
+    ):
         args.add("-collection:{}={}".format(
-            name,
-            lib_info.collection_root,
+            collection[0],
+            collection[1],
         ))
 
     # Collect all inputs: sources + library dep srcs + entire SDK.
     inputs = depset(
-        direct = srcs + dep_srcs,
-        transitive = [odin_info.all_files],
+        direct = srcs,
+        transitive = dep_srcs + [odin_info.all_files],
     )
 
     # Set ODIN_ROOT so the compiler finds core/, base/, vendor/.

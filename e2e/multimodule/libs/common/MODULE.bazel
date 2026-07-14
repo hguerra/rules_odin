@@ -1,0 +1,32 @@
+"""Independently buildable shared-library module."""
+
+module(
+    name = "common",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_odin", version = "0.2.0")
+local_path_override(
+    module_name = "rules_odin",
+    path = "../../../..",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "platforms", version = "0.0.10")
+
+odin = use_extension("@rules_odin//odin:extensions.bzl", "odin")
+odin.toolchain(odin_version = "dev-2026-06")
+use_repo(odin, "odin_toolchains")
+
+odin_deps = use_extension("@rules_odin//odin:deps_extensions.bzl", "odin_deps")
+odin_deps.http_archive(
+    name = "parser",
+    package_path = "parser",
+    sha256 = "6cc47e54724afcc3371bc347bec3a15f20378d346f0142180f2cb93f1819e7d2",
+    source_subdir = "src",
+    strip_prefix = "parser-source",
+    urls = ["https://offline.invalid/parser.tar.gz"],
+)
+use_repo(odin_deps, "parser")
+
+register_toolchains("@odin_toolchains//:all")
